@@ -1,0 +1,67 @@
+Dimitriu Dragos-Cosmin 331CA
+
+In implementarea temei am completat functiile aferente, am creat functii helper
+si am facut un max-heap customizat pentru tema, pentru sortarea thread-urilor.
+
+Heap-ul contine functiile clasice, specifice unui heap si o functie care sterge
+un element, dupa id-ul dat ca parametru.
+
+thread_state contine starea unui thread :
+	- tid : thread_id-ul returnat de apelul de sistem
+	- wait : id-ul device-ului de IO la care asteapta un thread sau -1 daca nu
+			este in asteptare
+	- priority : prioritatea thread-ului
+	- order : numarul de ordine a thread-ului, folosit pentru ca thread-urile
+			cu aceeasi prioritate sa ruleze functie fiecare, sortate dupa order
+	- handler : functia handler primita la so_fork
+	- sem : semafor folosit pentru trecerea thread-ului din starea de running
+			in waiting si invers
+
+threads - un vector ce contine starea pentru fiecare thread
+count - numarul de thread-uri create
+s_quantum - lungimea unei cuante de rulare
+s_max_io - numarul maxim de device-uri de io
+current_quantum - numarul de operatii ramase pentru thread-ul curent
+current_thread - id-ul thread-ului curent (numarul de ordine in vector)
+heap - max-heap-ul ce contine thread-urile ce asteapta sa ruleze
+order - retine ordinea thread-urilor. o folosesc pentru a face ca alegerea
+		thread-urilor sa fie echitabila si sa obtin o ordonare mai buna a
+
+so_init : alocari de memorie si initializarea variabilelor globale
+
+so_fork : aloc resursele pentru un nou thread, il introduc in heap si il creez,
+	apeland start_thread, care se ocupa cu managementul thread-ului nou.
+	in cazul in care este primul thread creat, deblochez semaforul la care
+	asteapta thread-ul nou creat, iar daca nu, decrementez cuanta si apelez
+	scheduler-ul
+
+so_wait : setez id-ul device-ului de io thread-ului curent si apelez
+	scheduler-ul
+
+so_signal : caut in vectorul de thread-uri toate thread-urile care asteapta
+	la device-ul io primit ca parametru, le introduc in heap, decrementez
+	cuanta de procesor si apelez scheduler-ul
+
+so_exec : decrementez cuanta si apelez scheduler-ul
+
+so_end : astept sa se termine thread-urile, eliberez resursele si setez
+	variabilele globale la valori default
+
+start_thread : pun thread-ul in asteptare la semafor. dupa ce trece de semafor,
+	apelez handler-ul specific cu prioritatea sa. cand iese din handler setez
+	cuanta la 0 si apelez scheduler-ul
+
+scheduler : preiau primul element din heap. daca heap-ul este gol sau thread-ul
+	din varf are prioritatea mai mica, nu asteapta si thread-ul curent nu s-a
+	terminat, resetez cuanta daca este nevoie si ies.
+	daca thread-ul din heap are prioritatea mai mare, fac o schimbare de
+	context. daca thread-ul curent nu s-a terminat si nu e in asteptare, il
+	reintroduc in heap.
+	altfel, daca cuanta a expirat sau thread-ul este in asteptare, caut sa fac
+	o schimbare de context cu thread-ul aflat in varful heap-ului. daca
+	thread-ul curent nu s-a terminat si nu este in asteptare, il reintroduc
+	in heap
+
+change_context : fac schimbarea de context, schimband variabilele globale
+	specifice thread-ului in rulare, eliberez semaforul. daca thread-ul
+	curent nu s-a terminat il pun sa astepte la semafor-ul sau.

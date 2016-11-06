@@ -1,0 +1,75 @@
+Dimitriu Dragos-Cosmin 331CA
+
+Multi-Platform Development Hashtable
+
+Citirea comenzilor
+	Pentru citirea comenzilor am folosit un buffer cu dimensiunea maxima
+predefinita, alocat dinamic. Cat timp fgets nu imi intoarce NULL (mai am
+comenzi de citit de la stdin sau nu am ajuns la final de fisier), citesc o
+linie si verific daca nu e o linie goala. Altfel, fac match pe tipul de
+comanda
+
+Implementare Hashtable
+
+Reprezentare "grafica" a Hashtable-ului
+
+size
+
+buckets(vector):
+
+[0]* -> <- * -> <- * -> <- *
+[1]* -> <- * -> <- * -> <- *
+.
+.
+.
+.
+[size - 1]* -> <- * -> <- * -> <- *
+
+unde fiecare '*' contine:
+key
+value
+next
+prev
+
+	Pentru implementarea Hashtableului am optat pentru o structura, ce contine
+un vector de pointeri de tip Bucket si un size (pentru numarul de bucketuri).
+Cu structura de tip bucket, creez o lista dublu inlantuita. Astfel, fiecare
+pozitie din hashtable reprezinta un loc in vectorul meu de bucket-uri, pozitie
+data de functia de hashing si pentru coliziuni, mai adaug un nod la lista
+de buckets, in caz ca nu exista deja valoarea respectiva.
+
+In urma calcularii hash-ului obtin index-ul din vectorul de buckets
+
+	Add: calculez valoarea hash-ului si incep sa introduc in bucket.
+Daca bucket-ul este gol, il aloc si inserez astfel pe prima pozitie.
+Daca nu este gol, ma plimb din bucket in bucket pana ajuns la ultimul.
+Daca nu am dat de un duplicat, atunci inserez un nou bucket la finalul listei
+cu noua valoare.
+
+	Remove: Calculez hash-ul si incep operatia de scoatere din bucket.
+Cat timp nu am ajuns la capatul listei de buckets, trec din bucket in bucket.
+Daca am dat de valoarea cautata, shiftez toata lista, incepand de la pozitia
+cu elementul gasit, spre stanga. Astfel se pastreaza ordinea in hashtable, si
+ultimul nod (care e in plus datorita shiftarii) il sterg.
+
+	Find: Calculez hash-ul si incep operatia de cautare in bucket.
+Trec din bucket in bucket pana ajung la finalul listei sau pana dau de valoarea
+cautata. Daca am gasit valoarea, functia find_in_bucket intoarce 1, altfel 0.
+Scriu unde imi este cerut functie de valoarea de retur.
+
+	Clear: Daca hash-ul este initializat(cu init), iterez prin tot vectorul
+de buckets si apelez functia clear_bucket. Functia clear_bucket, se plimba
+printr-o lista de buckets din nod in nod si elibereaza memoria pentru fiecare
+nod. La final, eliberez memoria pentru vectorul de pointeri.
+
+	Print_hash_bucket: Apeleaza functia print_bucket care trece din nod in nod
+print lista de buckets si afiseaza valorile din fiecare nod.
+
+	Print : Iterez prin tot vectorul de buckets si apelez functia print_bucket
+pentru fiecare bucket din vectorul de buckets.
+
+	Resize(double sau halve) : Creez un nou hash cu noua dimensiune. Functia
+add_all_from_hash itereaza prin fiecare bucket din vectorul de buckets si
+apeleaza functia add_all_from_bucket. Functia itereaza prin toata lista
+inlantuita de buckets, ia valoarea si o introduce in noul hashtable, ce il
+primeste ca parametru.

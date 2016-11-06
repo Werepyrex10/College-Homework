@@ -1,0 +1,69 @@
+Dimitriu Dragos-Cosmin 331CA
+
+In cadrul implementarii am simulat pentru fiecare conexiune primita o masina
+de stari, functie de requestul primit.
+
+Initial, creez poll-ul epollfd, creez socketul de listen si il setez ca fiind
+nonblocant si il adaug la epoll. In loop-ul server-ului, pot avea 3 tipuri de
+evenimente majore:
+
+1. Vine o noua conexiune. Asta inseamna ca fd-ul din event este listenfd.
+Accept noua conexiune si adaug socket-ul pentru intrare in epoll.
+
+2. Eveniment de input. Poate fi de mai multe tipuri:
+	a. Pot primi ceva pe un socket, caz in care citesc nonblocant, pana dau
+	de \r\n\r\n. Odata primit, parsez cererea si vad daca este cerere pentru
+	fisier dinamic sau static. Totodata, setez socket-ul ca fiind inout.
+
+	b. Semnaleaza ca am primit ceva pe un buffer de la citirea din fisier
+	(caz fisier de tip dinamic), caz in care apelez io_getevents, schimb
+	starea pe PREP_AIO_SEND (vreau sa trimit o bucatica din fisierul dynamic),
+	distrug context-ul si scot event file descriptorul din epollfd.
+
+	c. PREP_AIO_SEND. Un buffer de input este pregatit pentru trimitere
+	(am terminat de citit bucata din fisier). Schimb starea in
+	SEND_DYNAMIC_CHUNK
+
+	d. SEND_DYNAMIC_CHUNK. Semnaleaza ca buffer-ul de input este gata si aici
+	fac efectiv inceperea trimiterii. Dau send pe socket la buffer-ul de input.
+
+3. Eveniment de output:
+	a. RECEIVED. Buffer-ul pentru header este pregatit pentru a fi formatat.
+
+	b. HEADER. Buffer-ul pentru output este umplut cu raspunsul http si este
+	gata pentru a fi trimis sau mai are de trimis.
+
+	c. STATIC_FILE. Mai are de trimis pe socket fisierul de output sau s-a
+	terminat trimiterea lui.
+
+Flow pentru fisier static.
+Primesc event de input pe listen fd. Noua conexiune. O accept si pun sockfd
+in epoll pentru intrare. Primesc apoi eveniment de input si observ ca in event
+este sockfd-ul acceptat anterior. Citesc mesajul. Voi primi notificari de input
+pana cand termin de citit mesajul. Parsez mesajul si updatez in epoll socket-ul
+ca fiind inout (in caz ca mai primesc mesaje). Primesc eveniment pe output
+ca buffer-ul este gata de trimitere si formatez buffer-ul. Primesc iar
+notificare pe output ca buffer-ul este gata pentru a fi trimis. Voi primi
+notificari pe output pana termin de trimis header-ul pe socket. Primesc
+notificare pe output ca pot trimite pe socket. Trimit cu sendfile fisierul
+pana termin de trimis. Inchid conexiunea.
+
+Flow pentru fisier dinamic.
+Primesc event de input pe listen fd. Noua conexiune. O accept si pun sockfd
+in epoll pentru intrare. Primesc apoi eveniment de input si observ ca in event
+este sockfd-ul acceptat anterior. Citesc mesajul. Voi primi notificari de input
+pana cand termin de citit mesajul. Parsez mesajul si updatez in epoll socket-ul
+ca fiind inout (in caz ca mai primesc mesaje). Primesc eveniment pe output
+ca buffer-ul este gata de trimitere si formatez buffer-ul. Primesc iar
+notificare pe output ca buffer-ul este gata pentru a fi trimis. Voi primi
+notificari pe output pana termin de trimis header-ul pe socket. Primesc 
+notificare la output (datorita faptului ca am trimis anterior) si am starea
+de PREP_AIO_READ. Creez un context pentru citirea aio din fisier, adaug
+un eventfd pentru citire in epoll, setez context-ul si submit-ez actiunea.
+Primesc notificare pe input la citirea bucatii dinamice ca s-a terminat.
+Distrug context-ul si scot event-ul din epoll. Primesc notificare la input
+(datorita faptului ca am citit anterior ca sunt gata de trimitere). Trimit
+cu send nonblocant bucata de fisier. Primesc notificare la output si voi
+continua sa primesc pana cand termin de trimis bucata de fisier. Dupa ce
+am terminat bucata, daca mai am, revin la PREP_AIO_READ si repet pasii
+pana cand s-a trimis tot.

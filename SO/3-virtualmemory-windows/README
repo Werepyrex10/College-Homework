@@ -1,0 +1,76 @@
+Dimitriu Dragos-Cosmin 331CA
+
+Pentru implementarea temei am modificat putin structura fisierului header
+helpers.h
+	- Din structura frame am pastrat doar pointer-ul spre pagina virtuala care
+	administreaza pagina fizica respectiva
+
+	- Am creat structura mem, care contine un vector de pagini fizice, un
+	vector de pagini virtuale aferente, pointer-ul spre zona de start,
+	handler-ele fisierelor pentru swap si ram, handler-ul pentru ram
+	creat de functia CreateFileView si numarul de pagini fizice/virtuale.
+	Astfel pot administra mai usor o zona alocata.
+
+	- Structura node am creat-o pentru a retine mai usor, sub forma de lista
+	simplu inlantuita, toate alocarile de memorie
+
+VMSIM_INIT : setez handler-ul pentru SIGSEGV creat de mine si intorc valoarea
+data de functia de set
+
+VMSIM_CLEANUP : setez handler-ul gol pentru SIGSEGV si intorc valoarea data de
+functia de set
+
+VM_ALLOC : creez un nod in lista mea memory. Aloc memorie pentru num_frames
+pagini fizice si num_pages pagini virtuale. Mapez la start memorie virtuala
+de page_size * num_pages octeti. Creez handler-ele pentru swap si ram si
+initializez structurile ce administreaza paginile fizice si virtuale. Adaug
+nodul creat in lista de noduri de mapari
+
+VM_FREE : caut prin lista de mapari, nodul care se ocupa de zona respectiva,
+eliberez memoria tinuta de structurile administrative, inchid handler-ele,
+sterg fisierul de SWAP si fisierul de RAM, care tinea maparile in fisier,
+sterg nodul din lista de memorie si eliberez nodul.
+
+init_mem_entry : functie ce imi seteaza valorile initiale si aloca memorie
+pentru administrarea a num_frames pagini fizice si num_pages pagini virtuale.
+De asemenea, aloca si memorie virtuala ce urmeaza a fi tratata prin handler-ul
+de SIGSEGV
+
+create_handler : functie ce imi returneaza un handler la un fisier temporar.
+Denumirea se face cu prefixul pref (care este RAM sau SWAP) si numele il retin
+in filename, pointer la vectorul de caractere din structura mem care retine
+numele fisierelor pentru stergere ulterioara
+
+page_init : functie ce initializeaza cu valori de inceput o un page_table_entry
+
+signal_handler : din info extrag adresa si o aliniez la o pagina virtuala.
+Caut apoi in memoria, mem_entry-ul care administreaza zona respectiva.
+Calculez apoi numarul paginii.
+	- Daca zona respectiva nu are niciun fel de protection, atunci o aloc pe
+	memoria ram si ii pui protection_read pentru a putea fi citita. Actualizez
+	informatia tinuta in entry si numarul de pagini rezidente in memorie
+
+	- Daca zona se afla in RAM, inseamna ca s-a incercat scriere pe ea si are
+	doar drept de citire. Acord zonei respective drept de scriere si setez
+	bit-ul de dirty
+
+	- Daca RAM-ul nu mai are loc (am atins limita de pagini fizice), dau swap
+	out la o pagina virtuala. Demapez zona page_addr si o mapez pentru
+	scriere si citire (pentru scriere in cazul in care este o pagina noua si
+	pun astfel 0). Daca pagina este in swap, citesc continutul din swap, altfel
+	pun valori de 0 pe page_size octeti. Schimb protectia pe protection_read
+	si curat bit-ul de dirty.
+
+find_node : caut prin memorie, nodul care administreaza memoria de la page_addr
+
+swap_out : daca pagina este dirty sau este o pagina noua (starea anterioara
+a fost state_not_alloc) scriu continutul paginii in fisierul de swap. Demapez
+zona respectiva si actualizez starea structurilor administrative.
+Fiind la liberul arbitru, mereu dau swap_out la prima pagina fizica din
+nodul ce administreaza o zona de memorie
+
+get_page_no : cauta numarul paginii virtuale page in cadrul unui nod ce
+administreaza o zona de memorie.
+
+get_frame_no : cauta numarul paginii fizice framein cadrul unui nod ce
+administreaza o zona de memorie.

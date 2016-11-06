@@ -1,0 +1,52 @@
+Dimitriu Dragos-Cosmin 331CA
+
+In cadrul implementarii am simulat pentru fiecare conexiune primita o masina
+de stari, functie de requestul primit.
+
+Creez handle-ul de iocp, creez un listener pentru server si il adaug in iocp.
+Pun o citire nonblocanta pe handle-ul server-ului pentru a primi notificare
+cand vine un mesaj. In cadrul buclei de server, astept un event pe iocp.
+
+Pot fi 3 tipuri de evenimente:
+	1. Eveniment pe listenfH. Am o noua conexiune. Aloc resursele si pun
+	un pun read pe socket-ul respectiv pentru a primi notificare la citire.
+	Totodata, pun o citire si pe socket-ul de server pentru a procesa
+	alti eventuali clienti.
+	2. Eveniment de input :
+		a. Am primit mesaj pe socket. Citesc mesajul si caut \r\n\r\n
+		pentru a sti cand am terminat de citit. Parsez requestul, formatez
+		header-ul si incep trimiterea lui pe socket.
+		
+		b. Am primit notificare de input ca am citit o bucata din fisierul
+		dynamic, nu neaparat tot.
+		
+	3. Eveniment de output :
+		a. Primesc notificare legata de trimiterea header-ului. Verific daca
+		s-a trimis tot.
+		
+		b. Primesc notificare legata de trimiterea prin zero-copy a fisierului
+		static. Verific daca s-a trimis tot.
+		
+		c. Primesc notificare legata de trimiterea unei bucati din fisierul
+		dinamic. Verific daca s-a trimis tot.
+		
+Flow pentru fisierul static.
+	Primesc o notificare pe handle-ul de server. Accept conexiunea si pun
+in coada un receive pentru a citi eventualul request. Primesc notificare la
+input si citesc pana dau de \r\n\r\n. Parsez requestul si pun un send cu
+raspunsul http. Astept pana cand se trimite header-ul. Intru la partea de
+trimitere a fisierului static si apelez transmitfile. Primesc notificare la
+output legata de trimitere si numar cat am trimis. Dupa ce am numarat tot
+fisierul inchid conexiunea.
+
+Flow pentru fisierul dinamic.
+	Primesc o notificare pe handle-ul de server. Accept conexiunea si pun
+in coada un receive pentru a citi eventualul request. Primesc notificare la
+input si citesc pana dau de \r\n\r\n. Parsez requestul si pun un send cu
+raspunsul http. Astept pana cand se trimite header-ul. Intru la citirea
+unui chunk din fisier cu readfile. Primesc notificare la input. Verific
+cat am citit. Tot primesc notificari pana cand am citit cat am dat eu
+adineaori. Apelez functia de trimitere nonblocanta. Primesc notificare
+la output si citesc cat am trimis. Tot primesc notificari pana cand am
+trimis tot. Reiau procesul de citire a chunk-ului si de trimitere pana
+cand am terminat de trimis tot fisierul.

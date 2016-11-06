@@ -1,0 +1,55 @@
+Dimitriu Dragos-Cosmin 331CA
+Tema 2 SO - Mini-Shell
+
+Am pornit implementarea de la scheletul de cod oferit.
+
+Pentru implementare, mi-am facut niste functii proprii:
+	- error : scrie un mesaj de eroare la stderr si intoarce -1
+
+	- redirect_fd : ia file descriptorul dat ca parametru si il redirecteaza
+	spre fisierul dat ca parametru. Functia primeste si flag-uri pentru deschidere
+	si parametrul many, imi spune daca trebuie sa redirectez si stdout si stderr
+	spre fisierul dat (cazul in care comanda are &> la final)
+
+	- redirect_cd : in cazul in care am cd si primesc anumite fisiere pentru
+	redirectari in shell, doar creez fisierele respective. In cazul in care trebuie
+	sa redirectez si stdout si stderr, atunci deschid fisierele si realizez si
+	redirectarile
+
+	- shell_set_var : functia imi verifica daca comanda este de tipul setarii
+	unei variabile de mediu. In caz afirmativ, setez variabila respectiva si
+	intorc 1. In caz negativ, intorc NO_SETENV (-2)
+
+	- redirect : realizeaza redirectarea standard file descriptorilor inspre
+	fisierele date ca parametru, diferite de NULL. Parametrul append imi spune
+	daca trebuie sa realizez apendare la deschiderea pentru scriere
+
+Restul functiilor implementate sunt cele cerute in schelet:
+	- shell_cd : returnez direct rezultatul comenzii chdir
+
+	- shell_exit : returnez variabila definita SHELL_EXIT
+
+	- parse_simple : verific daca comanda primita este null. Apoi verific
+	daca este o comanda built-in (cd, exit, quit sau setare de variabila
+	de mediu). Dupa care, imi creez un proces copil care executa comanda
+	folosind execvp(care primeste direct comanda sub forma de char** si
+	se uita si in PATH dupa executabilul pentru comanda respectiva). Procesul
+	parinte asteapta apoi sa se termine copilul
+
+	- do_in_parallel : procesul parinte creeaza un copil care executa
+	prima comanda folosind execvp. Apoi tot procesul parinte creeaza un al
+	doilea copil ce executa a doua comanda. Parintele asteapta apoi sa se
+	termine copiii.
+
+	- do_on_pipe : creez un pipe. Procesul parinte creeaza apoi primul copil.
+	Redirectez pentru primul copil STDOUT-ul la fd[1] (partea din pipe
+	folosita la scriere), inchid fd[0] si apelez parse_command de pe primul
+	copil pentru a se ocupa de executia primei comenzi. Creez al doilea copil
+	si redirectez STDIN-ul la fd[0] (partea din pipe folosita la citire),
+	inchid fd[1] si apelez parse_command de pe al doilea copil pentru a se
+	ocupa de executia celei	de-a doua comenzi. Parintele inchide ambele capete
+	din pipe si asteapta sa se incheie executia copiilor.
+
+	- parse_command : verific daca este goala comanda dupa care, in partea
+	deja scrisa din schelet, realizez actiunile specifice fiecarui tip de
+	operator

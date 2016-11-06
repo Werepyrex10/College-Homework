@@ -1,0 +1,34 @@
+Dimitriu Dragos-Cosmin 331CA
+
+Pentru implementarea temei mi-am facut niste functii ajutatoare:
+
+ - openFile : intoarce un HANDLE pentru fisierul dat ca parametru, deschis cu
+   optiunea data ca parametru, restul fiind default. El este deschis pentru
+   scriere sau citire, dupa parametrul type
+
+ - shell_set_var : verifica daca este o comanda de schimbare de variabila de 
+ 	mediu si o seteaza. Altfel, intoarce un cod specific si nu are niciun efect
+
+ - redirect : realizeaza redirectarile pentru toti standard file descriptorii
+    si scrie acest lucru in varilabila si. Poate realiza redirectari si
+    pe modul append
+
+Am facut si o structura pentru a-mi retine datele la un CreateThread.
+
+ - shell_cd : am creat fisierele pentru redirectare, in cazul in care 
+ 	parametrii nu sunt nuli si realizez schimbarea folder-ului curent
+
+ - parse_simple : verific daca este o comanda build-in. In cazul
+ 	in care trece de aceste verificari, realizez redirectarile
+ 	si creez un proces copil care sa execute comanda. Astept
+ 	terminarea acestuia si eliberez memoria
+
+ - do_in_parallel : creez un thread si rulez prima comanda. Dupa ce se termina
+ 	thread-ul, rulez si a doua comanda si intorc valoarea de retur
+
+ - parse_command : in functie de tipul de operator din c->op, relizez
+ 	operatiile respective necesare
+	
+ - do_on_pipe : creez cate un thread pentru prima comanda si o rulez. Astept
+	terminarea ei si apoi rulez a doua comanda avand grija sa inchid partea de
+	scriere din pipe
